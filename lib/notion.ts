@@ -49,37 +49,65 @@ export async function getNotionDatabase() {
     }
 
     console.log("[v0] Client initialized successfully")
+    console.log("[v0] Attempting to query database with ID:", databaseId)
 
-    // First, try with Published filter
+    // Use REST API directly since client.databases.query may not be available
     let response
     try {
-      response = await client.databases.query({
-        database_id: databaseId,
-        filter: {
-          property: "Published",
-          checkbox: {
-            equals: true,
-          },
+      console.log("[v0] Using REST API to query database")
+      const res = await fetch("https://api.notion.com/v1/databases/" + databaseId + "/query", {
+        method: "POST",
+        headers: {
+          "Authorization": "Bearer " + process.env.NOTION_TOKEN,
+          "Notion-Version": "2024-06-15",
+          "Content-Type": "application/json",
         },
-        sorts: [
-          {
-            property: "Date",
-            direction: "descending",
+        body: JSON.stringify({
+          filter: {
+            property: "Published",
+            checkbox: {
+              equals: true,
+            },
           },
-        ],
+          sorts: [
+            {
+              property: "Date",
+              direction: "descending",
+            },
+          ],
+        }),
       })
+
+      if (!res.ok) {
+        throw new Error(`Notion API error: ${res.status} ${res.statusText}`)
+      }
+
+      response = await res.json()
     } catch (filterError) {
-      console.log("Published filter failed, trying without filter:", filterError)
-      // If Published property doesn't exist, get all pages
-      response = await client.databases.query({
-        database_id: databaseId,
-        sorts: [
-          {
-            property: "Date",
-            direction: "descending",
-          },
-        ],
+      console.log("[v0] Published filter query failed, trying without filter")
+      // Try without Published filter
+      const res = await fetch("https://api.notion.com/v1/databases/" + databaseId + "/query", {
+        method: "POST",
+        headers: {
+          "Authorization": "Bearer " + process.env.NOTION_TOKEN,
+          "Notion-Version": "2024-06-15",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          sorts: [
+            {
+              property: "Date",
+              direction: "descending",
+            },
+          ],
+        }),
       })
+
+      if (!res.ok) {
+        throw new Error(`Notion API error: ${res.status} ${res.statusText}`)
+      }
+
+      response = await res.json()
     }
 
     console.log("Fetched", response.results.length, "posts from Notion")
