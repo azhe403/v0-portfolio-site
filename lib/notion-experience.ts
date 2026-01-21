@@ -1,3 +1,9 @@
+import { Client } from "@notionhq/client"
+
+const notion = new Client({
+  auth: process.env.NOTION_TOKEN,
+})
+
 const experienceDatabaseId = process.env.NOTION_EXPERIENCE_DATABASE_ID!
 
 export async function getNotionExperience() {
@@ -13,63 +19,36 @@ export async function getNotionExperience() {
       return getMockExperience()
     }
 
-    // Use REST API directly to query experience database
+    // First, try with Published filter
     let response
     try {
-      console.log("[v0] Querying experience database with Published filter")
-      const res = await fetch("https://api.notion.com/v1/databases/" + experienceDatabaseId + "/query", {
-        method: "POST",
-        headers: {
-          "Authorization": "Bearer " + process.env.NOTION_TOKEN,
-          "Notion-Version": "2024-06-15",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          filter: {
-            property: "Published",
-            checkbox: {
-              equals: true,
-            },
+      response = await notion.databases.query({
+        database_id: experienceDatabaseId,
+        filter: {
+          property: "Published",
+          checkbox: {
+            equals: true,
           },
-          sorts: [
-            {
-              property: "StartDate",
-              direction: "descending",
-            },
-          ],
-        }),
-      })
-
-      if (!res.ok) {
-        throw new Error(`Notion API error: ${res.status} ${res.statusText}`)
-      }
-
-      response = await res.json()
-    } catch (filterError) {
-      console.log("[v0] Published filter query failed, trying without filter:", filterError)
-      // If Published property doesn't exist, get all pages
-      const res = await fetch("https://api.notion.com/v1/databases/" + experienceDatabaseId + "/query", {
-        method: "POST",
-        headers: {
-          "Authorization": "Bearer " + process.env.NOTION_TOKEN,
-          "Notion-Version": "2024-06-15",
-          "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          sorts: [
-            {
-              property: "StartDate",
-              direction: "descending",
-            },
-          ],
-        }),
+        sorts: [
+          {
+            property: "StartDate",
+            direction: "descending",
+          },
+        ],
       })
-
-      if (!res.ok) {
-        throw new Error(`Notion API error: ${res.status} ${res.statusText}`)
-      }
-
-      response = await res.json()
+    } catch (filterError) {
+      console.log("Published filter failed, trying without filter:", filterError)
+      // If Published property doesn't exist, get all pages
+      response = await notion.databases.query({
+        database_id: experienceDatabaseId,
+        sorts: [
+          {
+            property: "StartDate",
+            direction: "descending",
+          },
+        ],
+      })
     }
 
     console.log("Fetched", response.results.length, "experience entries from Notion")
@@ -157,4 +136,22 @@ function getMockExperience() {
       published: true,
     },
   ]
+}
+
+export async function getNotionExperienceBlocks(pageId: string) {
+  try {
+    if (!process.env.NOTION_TOKEN || !experienceDatabaseId) {
+      return []
+    }
+
+    const response = await notion.blocks.children.list({
+      block_id: pageId,
+      page_size: 100,
+    })
+
+    return response.results
+  } catch (error) {
+    console.error("Error fetching Notion experience blocks:", error)
+    return []
+  }
 }

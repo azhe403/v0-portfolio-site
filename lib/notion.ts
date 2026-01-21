@@ -1,113 +1,53 @@
 import { Client } from "@notionhq/client"
 
-let notion: any = null
-
-function getNotionClient() {
-  if (!notion) {
-    if (!process.env.NOTION_TOKEN) {
-      return null
-    }
-    try {
-      console.log("[v0] Creating new Client instance")
-      notion = new Client({
-        auth: process.env.NOTION_TOKEN,
-      })
-      console.log("[v0] Client instance created")
-      console.log("[v0] Has databases:", !!notion.databases)
-      console.log("[v0] databases.query type:", typeof notion.databases?.query)
-      console.log("[v0] databases keys:", Object.keys(notion.databases || {}).slice(0, 10))
-    } catch (error) {
-      console.error("[v0] Failed to initialize Notion client:", error)
-      return null
-    }
-  }
-  return notion
-}
+const notion = new Client({
+  auth: process.env.NOTION_TOKEN,
+})
 
 const databaseId = process.env.NOTION_DATABASE_ID!
 
 export async function getNotionDatabase() {
   try {
     console.log("Fetching Notion database with ID:", databaseId)
-    console.log("[v0] NOTION_TOKEN available:", !!process.env.NOTION_TOKEN)
-    console.log("[v0] NOTION_DATABASE_ID available:", !!databaseId)
+
+    if (!process.env.NOTION_TOKEN) {
+      throw new Error("NOTION_TOKEN environment variable is not set")
+    }
 
     if (!databaseId) {
       throw new Error("NOTION_DATABASE_ID environment variable is not set")
     }
 
-    if (!process.env.NOTION_TOKEN) {
-      console.log("[v0] NOTION_TOKEN not set, returning mock data")
-      throw new Error("NOTION_TOKEN not configured")
-    }
-
-    const client = getNotionClient()
-    
-    if (!client) {
-      console.log("[v0] Client is null after initialization")
-      throw new Error("Notion client failed to initialize")
-    }
-
-    console.log("[v0] Client initialized successfully")
-    console.log("[v0] Attempting to query database with ID:", databaseId)
-
-    // Use REST API directly since client.databases.query may not be available
+    // First, try with Published filter
     let response
     try {
-      console.log("[v0] Using REST API to query database")
-      const res = await fetch("https://api.notion.com/v1/databases/" + databaseId + "/query", {
-        method: "POST",
-        headers: {
-          "Authorization": "Bearer " + process.env.NOTION_TOKEN,
-          "Notion-Version": "2024-06-15",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          filter: {
-            property: "Published",
-            checkbox: {
-              equals: true,
-            },
+      response = await notion.databases.query({
+        database_id: databaseId,
+        filter: {
+          property: "Published",
+          checkbox: {
+            equals: true,
           },
-          sorts: [
-            {
-              property: "Date",
-              direction: "descending",
-            },
-          ],
-        }),
-      })
-
-      if (!res.ok) {
-        throw new Error(`Notion API error: ${res.status} ${res.statusText}`)
-      }
-
-      response = await res.json()
-    } catch (filterError) {
-      console.log("[v0] Published filter query failed, trying without filter")
-      // Try without Published filter
-      const res = await fetch("https://api.notion.com/v1/databases/" + databaseId + "/query", {
-        method: "POST",
-        headers: {
-          "Authorization": "Bearer " + process.env.NOTION_TOKEN,
-          "Notion-Version": "2024-06-15",
-          "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          sorts: [
-            {
-              property: "Date",
-              direction: "descending",
-            },
-          ],
-        }),
+        sorts: [
+          {
+            property: "Date",
+            direction: "descending",
+          },
+        ],
       })
-
-      if (!res.ok) {
-        throw new Error(`Notion API error: ${res.status} ${res.statusText}`)
-      }
-
-      response = await res.json()
+    } catch (filterError) {
+      console.log("Published filter failed, trying without filter:", filterError)
+      // If Published property doesn't exist, get all pages
+      response = await notion.databases.query({
+        database_id: databaseId,
+        sorts: [
+          {
+            property: "Date",
+            direction: "descending",
+          },
+        ],
+      })
     }
 
     console.log("Fetched", response.results.length, "posts from Notion")
@@ -194,7 +134,7 @@ export async function getNotionPage(slug: string) {
     console.log("Fetching page with slug:", slug)
 
     // If we don't have environment variables, return mock data
-    if (!databaseId) {
+    if (!process.env.NOTION_TOKEN || !databaseId) {
       console.log("No Notion credentials, returning mock data")
       const mockPosts = [
         {
@@ -250,16 +190,10 @@ export async function getNotionPage(slug: string) {
       throw new Error("Mock post not found")
     }
 
-    const client = getNotionClient()
-    
-    if (!client) {
-      throw new Error("Notion client is not available - NOTION_TOKEN may not be set")
-    }
-
     // First, try to find by custom slug with Published filter
     let response
     try {
-      response = await client.databases.query({
+      response = await notion.databases.query({
         database_id: databaseId,
         filter: {
           and: [
@@ -280,7 +214,7 @@ export async function getNotionPage(slug: string) {
       })
     } catch (filterError) {
       console.log("Slug filter with Published failed, trying without Published filter")
-      response = await client.databases.query({
+      response = await notion.databases.query({
         database_id: databaseId,
         filter: {
           property: "Slug",
@@ -298,7 +232,7 @@ export async function getNotionPage(slug: string) {
 
     // Try alternative slug property name
     try {
-      const altResponse = await client.databases.query({
+      const altResponse = await notion.databases.query({
         database_id: databaseId,
         filter: {
           property: "slug",
@@ -320,7 +254,7 @@ export async function getNotionPage(slug: string) {
     console.log("No custom slug found, trying to fetch by page ID:", slug)
 
     try {
-      const pageResponse = await client.pages.retrieve({ page_id: slug })
+      const pageResponse = await notion.pages.retrieve({ page_id: slug })
 
       // Check if this page is published (if property exists)
       const pageProperties = (pageResponse as any).properties
@@ -337,7 +271,7 @@ export async function getNotionPage(slug: string) {
       // Get all pages to see what's available
       console.log("Fetching all pages to debug...")
       try {
-        const allPages = await client.databases.query({
+        const allPages = await notion.databases.query({
           database_id: databaseId,
         })
         console.log(
@@ -383,7 +317,7 @@ function formatPageData(page: any, slug: string) {
 export async function getNotionBlocks(pageId: string) {
   try {
     // If no Notion credentials, return mock content
-    if (!databaseId) {
+    if (!process.env.NOTION_TOKEN || !databaseId) {
       return [
         {
           id: "mock-block-1",
@@ -456,13 +390,7 @@ export async function getNotionBlocks(pageId: string) {
       ]
     }
 
-    const client = getNotionClient()
-    
-    if (!client) {
-      throw new Error("Notion client is not available - NOTION_TOKEN may not be set")
-    }
-    
-    const response = await client.blocks.children.list({
+    const response = await notion.blocks.children.list({
       block_id: pageId,
       page_size: 100,
     })
