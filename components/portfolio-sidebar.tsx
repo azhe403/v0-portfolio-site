@@ -1,5 +1,5 @@
 "use client"
-import { User, Briefcase, Code, Mail, Github, Linkedin, Twitter, BookOpen, Instagram } from "lucide-react"
+import { User, Briefcase, Code, Code2, Mail, Github, Linkedin, Twitter, BookOpen, Instagram } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {
@@ -39,6 +39,11 @@ const navigationItems = [
     title: "Blog",
     icon: BookOpen,
     href: "/blog",
+  },
+  {
+    title: "Stack",
+    icon: Code2,
+    href: "/tech-stack",
   },
   {
     title: "Contact",
