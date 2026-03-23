@@ -100,7 +100,9 @@ function Text({ text }: { text: any[] }) {
         const {
           annotations: { bold, code, color, italic, strikethrough, underline },
           text,
+          href,
         } = value
+        const linkUrl = href || text?.link?.url
         return (
           <span
             key={index}
@@ -113,12 +115,12 @@ function Text({ text }: { text: any[] }) {
             ].join(" ")}
             style={color !== "default" ? { color } : {}}
           >
-            {text.link ? (
-              <a href={text.link.url} className="text-primary hover:underline">
-                {text.content}
+            {linkUrl ? (
+              <a href={linkUrl} className="text-primary hover:underline">
+                {text?.content}
               </a>
             ) : (
-              text.content
+              text?.content
             )}
           </span>
         )
