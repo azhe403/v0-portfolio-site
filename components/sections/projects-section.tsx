@@ -38,7 +38,7 @@ export function ProjectsSection({ projects }: ProjectsSectionProps) {
             </p>
           </div>
         ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-6 md:grid-cols-2 2xl:grid-cols-3">
             {projects.map((project) => (
               <Card key={project.id} className="overflow-hidden">
                 {project.image ? (
@@ -70,7 +70,7 @@ export function ProjectsSection({ projects }: ProjectsSectionProps) {
                   </CardContent>
                 )}
                 {(project.github || project.demo) && (
-                  <CardFooter className="flex gap-2">
+                  <CardFooter className="flex flex-wrap gap-2">
                     {project.github && (
                       <Button variant="outline" size="sm" asChild>
                         <a href={project.github} target="_blank" rel="noopener noreferrer">
