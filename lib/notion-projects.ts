@@ -63,9 +63,13 @@ export async function getNotionProjects(): Promise<PortfolioProject[]> {
     response = await notion.databases.query({
       database_id: databaseId,
       filter: { property: "Published", checkbox: { equals: true } },
+      sorts: [{ property: "Name", direction: "ascending" }],
     })
   } catch {
-    response = await notion.databases.query({ database_id: databaseId })
+    response = await notion.databases.query({
+      database_id: databaseId,
+      sorts: [{ property: "Name", direction: "ascending" }],
+    })
   }
 
   return (response.results as NotionPage[])
