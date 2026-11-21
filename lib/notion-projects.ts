@@ -2,6 +2,7 @@ import { getToken } from "@vercel/connect"
 import { Client } from "@notionhq/client"
 
 const connectorUid = "notion/portfolio-projects"
+const projectsDatabaseId = process.env.NOTION_PROJECTS_DATABASE_ID ?? "41e3de79-f5ad-8149-ab9e-e6f643721141"
 
 type NotionProperty = {
   title?: Array<{ plain_text?: string }>
@@ -52,10 +53,7 @@ function projectFromPage(page: NotionPage): PortfolioProject {
 }
 
 export async function getNotionProjects(): Promise<PortfolioProject[]> {
-  const databaseId = process.env.NOTION_DATABASE_ID
-  if (!databaseId) {
-    throw new Error("NOTION_DATABASE_ID is not configured")
-  }
+  const databaseId = projectsDatabaseId
 
   const token = await getToken(connectorUid, { subject: { type: "app" } })
   const notion = new Client({ auth: token })
