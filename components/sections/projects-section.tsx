@@ -51,7 +51,7 @@ export function ProjectsSection({ projects }: ProjectsSectionProps) {
                   </div>
                 ) : null}
                 <CardHeader>
-                  <CardTitle>{project.title}</CardTitle>
+                  <CardTitle className="break-words">{project.title}</CardTitle>
                   {project.description && <CardDescription>{project.description}</CardDescription>}
                 </CardHeader>
                 {project.technologies.length > 0 && (
