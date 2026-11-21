@@ -49,11 +49,7 @@ export function ProjectsSection({ projects }: ProjectsSectionProps) {
                       className="h-full w-full object-cover transition-transform hover:scale-105"
                     />
                   </div>
-                ) : (
-                  <div className="flex aspect-video items-center justify-center bg-muted text-muted-foreground" aria-hidden="true">
-                    <Layers3 className="size-10" />
-                  </div>
-                )}
+                ) : null}
                 <CardHeader>
                   <CardTitle>{project.title}</CardTitle>
                   {project.description && <CardDescription>{project.description}</CardDescription>}
